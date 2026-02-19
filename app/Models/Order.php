@@ -10,6 +10,8 @@ class Order extends Model
         'user_id',
         'total',
         'status',
+        'payment_method',
+        'shipping_address',
     ];
 
     protected $casts = [

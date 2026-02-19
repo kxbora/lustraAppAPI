@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Notification;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -41,6 +42,8 @@ class OrderController extends Controller
         $validated = $request->validate([
             'user_id' => 'nullable|exists:users,id',
             'status' => 'nullable|string|max:50',
+            'payment_method' => 'nullable|string|max:100',
+            'shipping_address' => 'nullable|string|max:1000',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -82,6 +85,8 @@ class OrderController extends Controller
                 'user_id' => $targetUserId,
                 'total' => $computedTotal,
                 'status' => $validated['status'] ?? 'pending',
+                'payment_method' => $validated['payment_method'] ?? null,
+                'shipping_address' => $validated['shipping_address'] ?? null,
             ]);
 
             foreach ($lineItems as $item) {
@@ -96,10 +101,57 @@ class OrderController extends Controller
             return $order;
         });
 
+        Notification::createSafe([
+            'user_id' => $targetUserId,
+            'title' => 'Order Placed',
+            'message' => "Your order #{$order->id} has been placed successfully.",
+            'type' => 'order',
+            'is_read' => false,
+        ]);
+
         return response()->json([
             'message' => 'Order placed',
             'order' => $order->load('items.product'),
         ], 201);
+    }
+
+    public function updateStatus(Request $request, $id)
+    {
+        $order = Order::with(['items.product', 'payment'])->findOrFail($id);
+
+        if (! $this->canAccessOrder($request, $order)) {
+            return response()->json([
+                'message' => 'Forbidden. You can only update your own orders.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'status' => 'required|string|in:pending,processing,shipped,delivered,cancelled',
+        ]);
+
+        $nextStatus = $validated['status'];
+        $currentStatus = strtolower((string) $order->status);
+
+        if (! $request->user()->is_admin && $nextStatus !== 'cancelled') {
+            return response()->json([
+                'message' => 'Forbidden. You can only cancel your order.',
+            ], 403);
+        }
+
+        if ($nextStatus === 'cancelled' && in_array($currentStatus, ['shipped', 'delivered', 'cancelled'], true)) {
+            return response()->json([
+                'message' => 'Order can no longer be cancelled.',
+            ], 422);
+        }
+
+        $order->update([
+            'status' => $nextStatus,
+        ]);
+
+        return response()->json([
+            'message' => 'Order status updated.',
+            'order' => $order->fresh()->load(['items.product', 'payment']),
+        ]);
     }
 
     private function canAccessOrder(Request $request, Order $order): bool

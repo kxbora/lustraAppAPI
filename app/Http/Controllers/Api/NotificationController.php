@@ -17,7 +17,7 @@ class NotificationController extends Controller
         }
 
         $notifications = Notification::where('user_id', $userId)
-            ->orderByDesc('id')
+            ->orderByDesc('created_at')
             ->get();
 
         return response()->json($notifications);
@@ -29,6 +29,7 @@ class NotificationController extends Controller
             'user_id' => 'nullable|exists:users,id',
             'title' => 'nullable|string|max:255',
             'message' => 'nullable|string',
+            'type' => 'nullable|string|in:payment,order,promotion,system',
             'is_read' => 'nullable|boolean',
         ]);
 
@@ -40,9 +41,10 @@ class NotificationController extends Controller
             ], 403);
         }
 
-        $notification = Notification::create([
+        $notification = Notification::createSafe([
             ...$validated,
             'user_id' => $targetUserId,
+            'type' => $validated['type'] ?? 'system',
         ]);
 
         return response()->json($notification, 201);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -223,6 +224,14 @@ class AuthController extends Controller
         $user->tokens()->delete();
         $token = $user->createToken('api-token')->plainTextToken;
 
+        Notification::createSafe([
+            'user_id' => $user->id,
+            'title' => 'Log in Successful',
+            'message' => "You've successfully logged in.",
+            'type' => 'system',
+            'is_read' => false,
+        ]);
+
         return response()->json([
             'message' => 'Login successful',
             'user' => $user,
@@ -281,6 +290,14 @@ class AuthController extends Controller
 
         $user->tokens()->delete();
         $token = $user->createToken('api-token')->plainTextToken;
+
+        Notification::createSafe([
+            'user_id' => $user->id,
+            'title' => 'Log in Successful',
+            'message' => "You've successfully logged in via {$validated['provider']}.",
+            'type' => 'system',
+            'is_read' => false,
+        ]);
 
         return response()->json([
             'message' => 'Social login successful',

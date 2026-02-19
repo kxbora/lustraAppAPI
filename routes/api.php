@@ -12,6 +12,11 @@ use App\Http\Controllers\Api\NotificationController;
 
 Route::middleware('throttle:10,1')->post('/register', [AuthController::class, 'register']);
 Route::middleware('throttle:5,1')->post('/login', [AuthController::class, 'login']);
+Route::get('/login', function () {
+    return response()->json([
+        'message' => 'Use POST /api/login with email and password.',
+    ], 200);
+});
 Route::middleware('throttle:10,1')->post('/social-login', [AuthController::class, 'socialLogin']);
 Route::middleware('throttle:3,1')->post('/forgot-password/send-otp', [AuthController::class, 'sendResetOtp']);
 Route::middleware('throttle:10,1')->post('/forgot-password/verify-otp', [AuthController::class, 'verifyResetOtp']);
@@ -43,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [OrderController::class, 'index']);
         Route::get('/{id}', [OrderController::class, 'show']);
         Route::post('/', [OrderController::class, 'store']);
+        Route::patch('/{id}/status', [OrderController::class, 'updateStatus']);
     });
 
     Route::prefix('/payments')->group(function() {

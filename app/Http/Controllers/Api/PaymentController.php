@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Notification;
 use App\Models\Order;
 use App\Models\Payment;
 use Illuminate\Http\Request;
@@ -53,6 +54,19 @@ class PaymentController extends Controller
         }
 
         $payment = Payment::create($validated);
+
+        $status = strtolower((string) ($payment->payment_status ?? ''));
+        $isSuccess = $status === 'success' || $status === 'paid' || $status === 'completed';
+
+        Notification::createSafe([
+            'user_id' => $order->user_id,
+            'title' => $isSuccess ? 'Payment Successful' : 'Payment Update',
+            'message' => $isSuccess
+                ? "Your payment for order #{$order->id} was processed successfully."
+                : "Your payment status for order #{$order->id} is {$payment->payment_status}.",
+            'type' => 'payment',
+            'is_read' => false,
+        ]);
 
         return response()->json($payment, 201);
     }

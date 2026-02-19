@@ -13,6 +13,21 @@ class ApiHardeningTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_browser_like_unauthenticated_api_request_returns_401(): void
+    {
+        $response = $this->get('/api/favorites/user/1');
+
+        $response->assertStatus(401);
+    }
+
+    public function test_get_login_route_returns_helpful_message(): void
+    {
+        $response = $this->getJson('/api/login');
+
+        $response->assertOk();
+        $response->assertJsonPath('message', 'Use POST /api/login with email and password.');
+    }
+
     public function test_guest_cannot_create_order(): void
     {
         $category = Category::create(['name' => 'Skincare']);
